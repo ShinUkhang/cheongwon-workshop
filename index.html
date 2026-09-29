@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>우리 반 스마트 알리미 만들기 — AI 연수</title>
+<meta name="description" content="청원중학교 AI 활용 연수 (2026.10.12) — 코딩 없이 AI와 대화하며 우리 반 대시보드 웹앱 만들기">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F8FAFC; --card: #FFFFFF; --ink: #0F172A; --sub: #64748B;
+    --brand: #4F46E5; --brand-dark: #3730A3; --line: #E2E8F0; --radius: 20px;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+      "Noto Sans KR", "Pretendard", sans-serif;
+    background: var(--bg); color: var(--ink); line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .hero {
+    background: linear-gradient(135deg, #312E81 0%, #4F46E5 55%, #7C3AED 100%);
+    color: #fff; padding: 72px 24px 64px; text-align: center; position: relative; overflow: hidden;
+  }
+  .hero::after {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(600px 300px at 50% -80px, rgba(255,255,255,.18), transparent);
+    pointer-events: none;
+  }
+  .hero .date {
+    display: inline-block; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3);
+    border-radius: 999px; padding: 7px 18px; font-size: 14px; font-weight: 600; margin-bottom: 20px;
+  }
+  .hero h1 { font-size: clamp(30px, 5.5vw, 52px); font-weight: 800; letter-spacing: -1px; line-height: 1.25; }
+  .hero h1 .hl { color: #FDE68A; }
+  .hero p { margin-top: 16px; font-size: clamp(15px, 2.4vw, 19px); color: #E0E7FF; max-width: 640px; margin-left: auto; margin-right: auto; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+  .cta-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px; margin: -36px auto 0; position: relative; z-index: 2; max-width: 960px; padding: 0 20px;
+  }
+  .cta {
+    background: var(--card); border-radius: var(--radius); padding: 26px 22px;
+    text-decoration: none; color: var(--ink); border: 1px solid var(--line);
+    box-shadow: 0 8px 28px rgba(15,23,42,.08); transition: transform .15s, box-shadow .15s;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .cta:hover { transform: translateY(-4px); box-shadow: 0 14px 34px rgba(79,70,229,.16); }
+  .cta .icon { font-size: 34px; }
+  .cta .t { font-size: 18px; font-weight: 800; }
+  .cta .d { font-size: 14px; color: var(--sub); }
+  .cta .go { margin-top: 6px; font-size: 14px; font-weight: 700; color: var(--brand); }
+  .cta.primary { background: linear-gradient(135deg, var(--brand), #7C3AED); border: none; color: #fff; }
+  .cta.primary .d { color: #E0E7FF; }
+  .cta.primary .go { color: #FDE68A; }
+  section { padding: 56px 0 8px; }
+  h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .sub { color: var(--sub); font-size: 15px; margin-bottom: 22px; }
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .slot {
+    display: flex; gap: 18px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; padding: 18px 22px; margin-bottom: 12px; align-items: flex-start;
+  }
+  .slot .tm {
+    flex-shrink: 0; font-weight: 800; color: var(--brand); background: #EEF2FF;
+    border-radius: 10px; padding: 6px 12px; font-size: 14px; white-space: nowrap;
+  }
+  .slot .what b { display: block; font-size: 16px; }
+  .slot .what span { font-size: 14px; color: var(--sub); }
+  .prep {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;
+  }
+  .prep .item {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px; font-size: 14.5px;
+  }
+  .prep .item b { display: block; margin-bottom: 4px; font-size: 15px; }
+  .prep .item span { color: var(--sub); font-size: 13.5px; }
+  .files {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 24px; margin-bottom: 12px;
+  }
+  .files h3 { font-size: 17px; margin-bottom: 10px; }
+  .files ul { list-style: none; }
+  .files li { padding: 9px 0; border-top: 1px dashed var(--line); font-size: 14.5px; display: flex; gap: 10px; align-items: baseline; }
+  .files li:first-child { border-top: none; }
+  .files a { color: var(--brand); font-weight: 600; text-decoration: none; }
+  .files a:hover { text-decoration: underline; }
+  .files .fname { font-family: "SF Mono", Consolas, monospace; font-size: 13px; color: var(--sub); }
+  footer { text-align: center; padding: 48px 20px 40px; color: var(--sub); font-size: 13.5px; }
+  footer a { color: var(--brand); text-decoration: none; font-weight: 600; }
+  @media (max-width: 560px) {
+    .hero { padding: 56px 20px 60px; }
+    .slot { flex-direction: column; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="date">📅 2026년 10월 12일 (월) · 청원중학교 AI 활용 연수</div>
+  <h1>우리 반 <span class="hl">스마트 알리미</span> 만들기</h1>
+  <p>코딩을 몰라도 괜찮아요. AI와 대화하듯 90분 만에<br>우리 반 전용 대시보드 웹앱을 완성하는 실습 연수입니다.</p>
+</div>
+
+<div class="cta-grid">
+  <a class="cta primary" href="https://github.com/ShinUkhang/cheongwon-workshop/archive/refs/heads/main.zip">
+    <div class="icon">📦</div>
+    <div class="t">연수 자료 다운로드</div>
+    <div class="d">체험폴더 전체 (ZIP) — 실습은 여기서 시작!</div>
+    <div class="go">다운로드 받기 →</div>
+  </a>
+  <a class="cta" href="강의용_프롬프트_보드.html">
+    <div class="icon">🎤</div>
+    <div class="t">프롬프트 보드</div>
+    <div class="d">클릭 한 번이면 프롬프트가 바로 뜨는 강의 진행용</div>
+    <div class="go">보드 열기 →</div>
+  </a>
+  <a class="cta" href="https://shinukhang.github.io/class_manager/">
+    <div class="icon">🖥️</div>
+    <div class="t">완성 앱 데모</div>
+    <div class="d">오늘 만들게 될 2학년 1반 대시보드 미리보기</div>
+    <div class="go">데모 보기 →</div>
+  </a>
+</div>
+
+<div class="wrap">
+  <section>
+    <h2>🗺️ 90분 타임라인</h2>
+    <p class="sub">따라만 오세요. 완성이 목표가 아니라 '감각을 익히는 것'이 목표입니다.</p>
+    <div class="timeline">
+      <div class="slot"><div class="tm">0–15분</div><div class="what"><b>1교시 · AI로 사진 인식하기</b><span>시간표·학사일정 사진을 찍어 올리면 AI가 표로 정리해줘요 (P1·P2)</span></div></div>
+      <div class="slot"><div class="tm">15–45분</div><div class="what"><b>2교시 · 대시보드 뼈대 만들기</b><span>토스 스타일 카드 디자인을 지시하고 7종 카드 앱을 생성해요 (P3·P4)</span></div></div>
+      <div class="slot"><div class="tm">45–60분</div><div class="what"><b>3교시 · 구글 시트 실시간 연동</b><span>시트에 적으면 앱에 바로 반영되는 '살아있는 앱'으로 업그레이드 (P5)</span></div></div>
+      <div class="slot"><div class="tm">60–78분</div><div class="what"><b>4교시 · GitHub Pages 배포</b><span>내 앱에 진짜 인터넷 주소를 달고 스마트폰으로 확인해요</span></div></div>
+      <div class="slot"><div class="tm">78–90분</div><div class="what"><b>마무리 · 소감 나누기 + 심화 안내</b><span>학부모 공지 팝업·나이스 급식 API·출결 DB 심화 도전 (P6·P8)</span></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>🎒 준비물</h2>
+    <p class="sub">연수 시작 전에 이것만 챙겨오세요.</p>
+    <div class="prep">
+      <div class="item"><b>💻 노트북</b><span>크롬 또는 엣지 브라우저</span></div>
+      <div class="item"><b>📸 시간표 사진</b><span>우리 반 시간표 한 장이면 충분해요</span></div>
+      <div class="item"><b>🗓️ 학사일정 사진</b><span>학교 홈페이지 학사일정 캡처도 OK</span></div>
+      <div class="item"><b>🔑 구글 계정</b><span>스프레드시트용 (없으면 현장에서 생성)</span></div>
+      <div class="item"><b>🐙 GitHub 계정</b><span>배포용 (없으면 현장에서 생성)</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>📁 자료실</h2>
+    <p class="sub">필요한 파일만 골라서 받을 수 있어요.</p>
+    <div class="files">
+      <h3>01 · 교안 및 문서 <span class="fname">01_교안및문서/</span></h3>
+      <ul>
+        <li>📕 <a href="01_교안및문서/청원중_학급앱_강의교안_10p.pdf">강의교안 10p</a> <span class="fname">PDF</span></li>
+        <li>💬 <a href="01_교안및문서/실습용_프롬프트_모음.pdf">실습용 프롬프트 모음</a> <span class="fname">PDF</span></li>
+        <li>🎨 <a href="01_교안및문서/디자인_샘플_시안.pdf">디자인 샘플 시안</a> <span class="fname">PDF</span></li>
+        <li>📊 <a href="01_교안및문서/학급대시보드_스프레드시트_템플릿.xlsx">스프레드시트 템플릿</a> <span class="fname">XLSX · 학생명단 탭 포함</span></li>
+        <li>🐙 <a href="01_교안및문서/깃허브_업로드_가이드.pdf">깃허브 업로드 가이드</a> <span class="fname">PDF</span></li>
+      </ul>
+    </div>
+    <div class="files">
+      <h3>02 · 연수체험폴더 <span class="fname">02_연수체험폴더/</span></h3>
+      <ul>
+        <li>🧭 <a href="02_연수체험폴더/00_따라하기_가이드.txt">따라하기 가이드</a> <span class="fname">TXT · STEP 0–8</span></li>
+        <li>⌨️ <a href="02_연수체험폴더/프롬프트/P1.txt">프롬프트 P1~P8</a> <span class="fname">TXT · 복사→붙여넣기용</span></li>
+        <li>🕘 <a href="02_연수체험폴더/시간표_샘플.csv">시간표 샘플</a> <span class="fname">CSV</span></li>
+        <li>✅ <a href="02_연수체험폴더/완성본_index.html">완성본 index.html</a> <span class="fname">HTML · 정답지</span></li>
+        <li>🗂️ <a href="02_연수체험폴더/심화_출결DB/읽어보세요.txt">심화 · 출결 DB</a> <span class="fname">학생명단 + Apps Script</span></li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<footer>
+  청원중학교 AI 활용 연수 · 2026.10.12 (월)<br>
+  자료 저장소 <a href="https://github.com/ShinUkhang/cheongwon-workshop">cheongwon-workshop</a> ·
+  완성 앱 <a href="https://shinukhang.github.io/class_manager/">class_manager</a>
+</footer>
+
+</body>
+</html>

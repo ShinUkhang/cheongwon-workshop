@@ -4,6 +4,7 @@
 코딩을 몰라도 AI와 대화하듯 우리 반 대시보드 웹앱을 만들 수 있어요.
 
 - 🖥️ 완성 앱 데모: https://shinukhang.github.io/class_manager/
+- 🏠 연수 홈페이지: https://shinukhang.github.io/cheongwon-workshop/
 - 🎤 강의용 프롬프트 보드: https://shinukhang.github.io/cheongwon-workshop/강의용_프롬프트_보드.html
 
 ## 폴더 구성
