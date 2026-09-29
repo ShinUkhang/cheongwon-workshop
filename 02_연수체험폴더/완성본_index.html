@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우리 반 스마트 알리미</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- PapaParse for Google Sheets CSV -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- Canvas Confetti for Birthday celebration -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#EEF2FF',
+              100: '#E0E7FF',
+              500: '#6366F1',
+              600: '#4F46E5',
+              700: '#4338CA',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Pretendard', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background-color: #CBD5E1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+  <!-- ======================================================== -->
+  <!-- [선생님 설정 영역]: 구글 시트, 나이스 급식 설정  -->
+  <!-- ======================================================== -->
+  <script>
+    const CONFIG = {
+      schoolName: "청원중학교",
+      className: "2학년 1반",
+      motto: "서로 존중하며 매일매일 함께 빛나는 우리 ✨",
+      // 시간표와 학사일정 캡처 이미지 경로
+      images: {
+        timetable: "timetable_2_1.png",
+        schedule: "schedule.png"
+      },
+      // 구글 스프레드시트 CSV 링크 및 급식 링크
+      // 시트 ID: 학급대시보드 관리 시트 (공개 시트이므로 키 없이 CSV로 읽음)
+      spreadsheetId: "1ixTBnYydfwo40Dby6wyZE9Bfi-s9IBYV3CrqlLF43vY",
+      sheets: {
+        substitute: "https://docs.google.com/spreadsheets/d/1ixTBnYydfwo40Dby6wyZE9Bfi-s9IBYV3CrqlLF43vY/gviz/tq?tqx=out:csv&sheet=결보강",  // 결보강 시트 CSV
+        homework: "https://docs.google.com/spreadsheets/d/1ixTBnYydfwo40Dby6wyZE9Bfi-s9IBYV3CrqlLF43vY/gviz/tq?tqx=out:csv&sheet=수행평가_과제",    // 수행평가 시트 CSV
+        lunch: "https://cheongwon.sen.ms.kr/76461/subMenu.do",    // 청원중학교 공식 홈페이지 급식 식단표 (https://cheongwon.sen.ms.kr/)
+        birthday: "https://docs.google.com/spreadsheets/d/1ixTBnYydfwo40Dby6wyZE9Bfi-s9IBYV3CrqlLF43vY/gviz/tq?tqx=out:csv&sheet=생일",  // 생일 시트 CSV
+        schedule: "https://docs.google.com/spreadsheets/d/1ixTBnYydfwo40Dby6wyZE9Bfi-s9IBYV3CrqlLF43vY/gviz/tq?tqx=out:csv&sheet=학사일정"  // 학사일정 시트 CSV (gid=989619611)
+      },
+      // 나이스(NEIS) 교육정보개방포털 급식 조회 설정 (인증키 불필요)
+      neis: {
+        atptCode: "B10",      // 서울특별시교육청
+        schoolCode: "7051208" // 청원중학교
+      }
+    };
+  </script>
+
+  <!-- 생일 축하 배너 -->
+  <div id="birthdayBanner" class="hidden bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 text-white px-4 py-3 shadow-md cursor-pointer hover:opacity-95 transition-all" onclick="fireConfetti()">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="text-2xl animate-bounce">🎂</span>
+        <span id="birthdayMessage" class="font-bold text-sm md:text-base">오늘은 우리 반 친구의 생일입니다! (클릭 시 폭죽 발사 🎉)</span>
+      </div>
+      <button class="bg-white/20 hover:bg-white/30 text-white text-xs px-3 py-1.5 rounded-full font-semibold">폭죽 터뜨리기 🎊</button>
+    </div>
+  </div>
+
+  <!-- 결보강 긴급 알림 띠 -->
+  <div id="substituteBanner" class="hidden bg-amber-500 text-slate-950 font-bold px-4 py-2.5 shadow-sm text-sm">
+    <div class="max-w-7xl mx-auto flex items-center space-x-2">
+      <i data-lucide="alert-triangle" class="w-5 h-5 flex-shrink-0 text-amber-950"></i>
+      <span id="substituteText">[오늘 시간표 변동 알림] 3교시 과학(박민우 선생님) 수업이 자습으로 변경되었습니다.</span>
+    </div>
+  </div>
+
+  <!-- 메인 레이아웃 컨테이너 -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- 상단 헤더 -->
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between pb-6 mb-6 border-b border-slate-200 dark:border-slate-800 gap-4">
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="bg-brand-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-md" id="headerSchool">청원중학교</span>
+          <h1 class="text-2xl sm:text-3xl font-black tracking-tight" id="headerClass">2학년 1반 스마트 알리미</h1>
+        </div>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5" id="headerMotto">
+          <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+          서로 존중하며 매일매일 함께 빛나는 우리 ✨
+        </p>
+      </div>
+
+      <!-- 상단 액션 바 -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- 실시간 시계 -->
+        <div class="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 text-right">
+          <div id="clockDate" class="text-[11px] font-semibold text-slate-400">2026-10-15 (목)</div>
+          <div id="clockTime" class="text-lg font-black text-brand-600 dark:text-brand-400 tabular-nums">09:00:00</div>
+        </div>
+
+        <!-- 새로고침 & 다크모드 -->
+        <button onclick="refreshData()" title="새로고침" class="p-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 shadow-sm transition">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+        <button onclick="toggleDarkMode()" title="다크모드" class="p-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 shadow-sm transition">
+          <i data-lucide="moon" class="w-4 h-4 dark:hidden"></i>
+          <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-amber-400"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 대시보드 3열 그리드 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <!-- ================= 1열: 시간표 ================= -->
+      <div class="space-y-6">
+        <!-- 시간표 카드 (2학년 1반 학급 시간표) -->
+        <div class="bg-white dark:bg-slate-800 rounded-3xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-700">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                <i data-lucide="calendar" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h2 class="font-bold text-lg leading-tight">2학년 1반 시간표</h2>
+                <p class="text-[11px] text-slate-400 font-medium" id="timetableTodayLabel">오늘의 시간표</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="toggleTimetableView()" id="timetableToggleBtn" class="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-lg font-medium transition">
+                주간 전체
+              </button>
+              <button onclick="openImageModal('timetable_2_1.png', '2학년 1반 학급시간표 원본 (참고자료)')" class="text-xs bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 hover:bg-blue-100 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition">
+                <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i> 원본
+              </button>
+            </div>
+          </div>
+
+          <!-- 오늘 요일 시간표 뷰 -->
+          <div id="todayTimetableView" class="space-y-1.5"></div>
+
+          <!-- 주간 전체 시간표 뷰 (토글) -->
+          <div id="weeklyTimetableView" class="hidden">
+            <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+              <table class="w-full text-xs text-center border-collapse">
+                <thead>
+                  <tr class="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                    <th class="py-2 px-1 border-r border-slate-200 dark:border-slate-700 w-10">교시</th>
+                    <th class="py-2 px-1 border-r border-slate-200 dark:border-slate-700" id="th-mon">월</th>
+                    <th class="py-2 px-1 border-r border-slate-200 dark:border-slate-700" id="th-tue">화</th>
+                    <th class="py-2 px-1 border-r border-slate-200 dark:border-slate-700" id="th-wed">수</th>
+                    <th class="py-2 px-1 border-r border-slate-200 dark:border-slate-700" id="th-thu">목</th>
+                    <th class="py-2 px-1" id="th-fri">금</th>
+                  </tr>
+                </thead>
+                <tbody id="weeklyTableBody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+            <span>참고자료: 2학년 학급 시간표 반영</span>
+            <span class="text-blue-600 dark:text-blue-400 font-semibold cursor-pointer hover:underline" onclick="openImageModal('timetable_2_1.png', '2학년 1반 학급시간표 원본')">사진 크게보기 &gt;</span>
+          </div>
+        </div>
+
+        <!-- 변동 사항(결보강) 상세 카드 -->
+        <div class="bg-white dark:bg-slate-800 rounded-3xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+          <div class="flex items-center gap-2 pb-3 mb-3 border-b border-slate-100 dark:border-slate-700">
+            <div class="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <i data-lucide="clock" class="w-4 h-4"></i>
+            </div>
+            <h2 class="font-bold text-lg">오늘의 시간표 변동</h2>
+          </div>
+          <div id="substituteDetail" class="text-sm text-slate-600 dark:text-slate-300"></div>
+        </div>
+      </div>
+
+      <!-- ================= 2열: 수행평가 & 학사일정 ================= -->
+      <div class="space-y-6">
+        <!-- 수행평가 및 과제 카드 -->
+        <div class="bg-white dark:bg-slate-800 rounded-3xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+          <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-700">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+              </div>
+              <h2 class="font-bold text-lg">수행평가 & 과제 마감</h2>
+            </div>
+            <span class="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-2.5 py-0.5 rounded-full font-bold">D-Day 자동</span>
+          </div>
+          <div id="homeworkList" class="space-y-3 custom-scroll max-h-[300px] overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- 학교 행사 & 학사일정 카드 (구글 스프레드시트 실시간 연동) -->
+        <div class="bg-white dark:bg-slate-800 rounded-3xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-700">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+                <i data-lucide="flag" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h2 class="font-bold text-lg leading-tight">학교 학사일정</h2>
+                <p class="text-[11px] text-teal-600 dark:text-teal-400 font-semibold flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span> 구글 시트 연동
+                </p>
+              </div>
+            </div>
+            <a href="https://docs.google.com/spreadsheets/d/1ixTBnYydfwo40Dby6wyZE9Bfi-s9IBYV3CrqlLF43vY/edit?gid=989619611#gid=989619611" target="_blank" rel="noopener noreferrer" class="text-xs bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition">
+              <i data-lucide="external-link" class="w-3.5 h-3.5"></i> 시트 열기
+            </a>
+          </div>
+
+          <!-- 학사일정 리스트 -->
+          <div id="scheduleList" class="space-y-2.5 custom-scroll max-h-[300px] overflow-y-auto pr-1"></div>
+
+          <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
+            <span>총 <strong id="scheduleCount" class="text-teal-600 dark:text-teal-400 font-bold">0</strong>개 예정된 일정</span>
+            <span class="text-slate-400">구글 스프레드시트 동기화</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 3열: 급식 & 생일 & 격언 ================= -->
+      <div class="space-y-6">
+        <!-- 오늘의 급식 카드 -->
+        <div class="bg-white dark:bg-slate-800 rounded-3xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+          <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-700">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-orange-50 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+                <i data-lucide="utensils" class="w-4 h-4"></i>
+              </div>
+              <h2 class="font-bold text-lg">오늘의 맛있는 급식 🍱</h2>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="lunchCalorie" class="text-xs font-semibold text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-2.5 py-1 rounded-lg">780 kcal</span>
+              <a href="https://cheongwon.sen.ms.kr/76461/subMenu.do" target="_blank" rel="noopener noreferrer" class="text-[11px] font-bold text-orange-700 bg-orange-100 hover:bg-orange-200 px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow-xs" title="청원중학교 공식 급식 식단표 열기 (cheongwon.sen.ms.kr)">
+                <span>청원중 급식표</span>
+                <i data-lucide="external-link" class="w-3 h-3"></i>
+              </a>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 dark:bg-slate-900/60 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">
+            <div id="lunchMenu" class="text-base font-semibold leading-relaxed text-slate-800 dark:text-slate-200">
+              현미밥, 쇠고기미역국, 돈육간장불고기, 깍두기, 샤인머스캣
+            </div>
+            <div id="lunchAllergy" class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-400 flex items-center justify-between">
+              <span>알레르기 정보: 대두, 돼지고기, 쇠고기</span>
+              <a href="https://cheongwon.sen.ms.kr/" target="_blank" rel="noopener noreferrer" class="hover:underline text-[11px] text-orange-600 dark:text-orange-400 font-semibold flex items-center gap-0.5">
+                학교홈페이지 <i data-lucide="chevron-right" class="w-3 h-3"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 우리 반 생일자 카드 -->
+        <div class="bg-white dark:bg-slate-800 rounded-3xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-700">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-pink-50 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400 flex items-center justify-center">
+                <i data-lucide="gift" class="w-4 h-4"></i>
+              </div>
+              <h2 class="font-bold text-lg">이번 달 생일 친구 🎂</h2>
+            </div>
+            <button onclick="fireConfetti()" class="text-xs text-pink-600 hover:underline">폭죽 터뜨리기 🎉</button>
+          </div>
+          <div id="birthdayList" class="space-y-2"></div>
+        </div>
+
+        <!-- 담임선생님의 한마디 -->
+        <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-5 text-white shadow-md">
+          <div class="flex items-center gap-2 mb-2 opacity-90 text-xs font-semibold uppercase tracking-wider">
+            <i data-lucide="heart" class="w-4 h-4"></i>
+            담임선생님의 따뜻한 한마디
+          </div>
+          <p class="text-sm font-medium leading-relaxed italic" id="dailyQuote">
+            "어제의 후회에 머물지 말고, 오늘 네가 피워낼 수 있는 가장 아름다운 꽃을 피우렴."
+          </p>
+          <div class="mt-3 text-right text-xs opacity-75 font-semibold">- 담임선생님 드림 -</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 하단 푸터 -->
+    <footer class="mt-12 pt-6 border-t border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400 flex flex-col sm:flex-row justify-between items-center gap-2">
+      <div>© 2026 청원중학교 2-1 학급 알리미 | Google Antigravity</div>
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>구글 시트 · 나이스 급식 실시간 연동</span>
+      </div>
+    </footer>
+
+  </div>
+  <!-- 이미지 확대 모달 -->
+  <div id="imageModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeImageModal()">
+    <div class="relative max-w-4xl w-full bg-white dark:bg-slate-800 rounded-3xl p-4 shadow-2xl" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between pb-3 mb-2 border-b border-slate-200 dark:border-slate-700">
+        <h3 id="modalTitle" class="font-bold text-base text-slate-800 dark:text-slate-100">이미지 크게 보기</h3>
+        <button onclick="closeImageModal()" class="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">
+          <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+      </div>
+      <div class="max-h-[80vh] overflow-auto flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-900 p-2">
+        <img id="modalImg" src="" alt="확대 이미지" class="max-w-full h-auto rounded-lg object-contain shadow-sm">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 기존 대시보드 로직
+    // ========================================================
+    // 2학년 1반 정규 주간 시간표 (참고자료 2학년 학급 시간표.pdf 1페이지 기준)
+    const TIMETABLE_2_1 = {
+      월: ["역사", "국어A", "체육B", "도덕", "기가A", "음악", "창체"],
+      화: ["수학", "체육A", "영어A", "스클", "과학A", "한문"],
+      수: ["국어A", "기가B", "수학", "영어A", "도덕", "미술", "미술"],
+      목: ["창체", "수학", "과학B", "음악", "국어B", "체육B"],
+      금: ["역사", "영어B", "국어B", "수학", "기가B", "과학A", "한문"]
+    };
+
+    let isWeeklyView = false;
+    function toggleTimetableView() {
+      isWeeklyView = !isWeeklyView;
+      const todayView = document.getElementById('todayTimetableView');
+      const weeklyView = document.getElementById('weeklyTimetableView');
+      const toggleBtn = document.getElementById('timetableToggleBtn');
+      if (isWeeklyView) {
+        todayView.classList.add('hidden');
+        weeklyView.classList.remove('hidden');
+        toggleBtn.innerText = "오늘 보기";
+      } else {
+        todayView.classList.remove('hidden');
+        weeklyView.classList.add('hidden');
+        toggleBtn.innerText = "주간 전체";
+      }
+      lucide.createIcons();
+    }
+
+    // 시트 연결 전/네트워크 오류 시 사용할 기본 예시 데이터
+    const mockData = {
+      substitute: [
+        { 날짜: getTodayYMD(), 교시: "3", 기존과목: "수학", 변경과목: "자습", 보강교사: "박민우", 수업장소: "본교실", 학생안내사항: "수행평가 보고서 개별 작성" }
+      ],
+      homework: [
+        { 구분: "수행평가", 과목명: "역사", 제목: "근현대사 인물 신문 만들기", 마감일: getDateOffset(2), 제출방법: "수업 중 제출", 준비물_세부내용: "8절 도화지, 채색도구", 반영비율: "20%" },
+        { 구분: "과제", 과목명: "수학", 제목: "3단원 복습 프린트 풀이", 마감일: getDateOffset(0), 제출방법: "교탁 위 제출", 준비물_세부내용: "교과서 54쪽 참고", 반영비율: "-" },
+        { 구분: "수행평가", 과목명: "영어A", 제목: "영작문 포트폴리오 제출", 마감일: getDateOffset(5), 제출방법: "구글 클래스룸", 준비물_세부내용: "단어 300자 이상", 반영비율: "15%" }
+      ],
+      birthday: [
+        { 월: (new Date().getMonth() + 1).toString(), 일: new Date().getDate().toString(), 이름: "이준호", 축하메시지: "준호야 생일 진심으로 축하해! 오늘 하루 가장 멋진 주인공이 되렴!" }
+      ],
+      // 구글 스프레드시트 학사일정 기본 데이터 (gid=989619611)
+      schedule: [
+        { 시작일: "2026-10-22", 종료일: "2026-10-24", 행사명: "2학기 1차 지필평가 (중간고사)", 대상: "전교생", 상세내용: "국영수사과 전과목", 준비물: "컴싸 및 수정테이프" },
+        { 시작일: "2026-11-05", 종료일: "2026-11-05", 행사명: "가을 현장체험학습", 대상: "3학년", 상세내용: "국립중앙박물관 견학", 준비물: "도시락 및 편한 복장" },
+        { 시작일: "2026-11-18", 종료일: "2026-11-18", 행사명: "교내 스포츠클럽 축구 결승전", 대상: "학급대표", 상세내용: "점심시간 운동장", 준비물: "응원도구" },
+        { 시작일: "2026-12-24", 종료일: "2026-12-24", 행사명: "겨울방학식 및 학급 축제", 대상: "전교생", 상세내용: "방학 생활안내 배포", 준비물: "대청소 도구" }
+      ]
+    };
+
+    function getTodayYMD() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function getDateOffset(days) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function openImageModal(imgSrc, title) {
+      document.getElementById('modalImg').src = imgSrc;
+      document.getElementById('modalTitle').innerText = title;
+      document.getElementById('imageModal').classList.remove('hidden');
+    }
+    function closeImageModal() { document.getElementById('imageModal').classList.add('hidden'); }
+
+    function updateClock() {
+      const now = new Date();
+      const days = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+      document.getElementById('clockDate').innerText = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()} (${days[now.getDay()]})`;
+      document.getElementById('clockTime').innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function toggleDarkMode() { document.documentElement.classList.toggle('dark'); }
+    function fireConfetti() { if (typeof confetti === 'function') confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } }); }
+
+    function calculateDDay(targetDateStr) {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const target = new Date(targetDateStr); target.setHours(0,0,0,0);
+      const diffDays = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return { text: "D-Day", badgeClass: "bg-red-500 text-white font-black animate-pulse" };
+      if (diffDays === 1) return { text: "D-1", badgeClass: "bg-orange-500 text-white font-bold" };
+      if (diffDays > 1 && diffDays <= 3) return { text: `D-${diffDays}`, badgeClass: "bg-amber-500 text-white font-bold" };
+      if (diffDays > 3) return { text: `D-${diffDays}`, badgeClass: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-semibold" };
+      return { text: "마감", badgeClass: "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400" };
+    }
+
+    function renderDashboard(data) {
+      // 결보강
+      const substituteBanner = document.getElementById('substituteBanner');
+      const substituteDetail = document.getElementById('substituteDetail');
+      const todaySub = (data.substitute || []).find(r => r.날짜 === getTodayYMD());
+
+      if (todaySub) {
+        substituteBanner.classList.remove('hidden');
+        document.getElementById('substituteText').innerText = `[오늘 시간표 변동 알림] ${todaySub.교시}교시 ${todaySub.기존과목} 수업이 '${todaySub.변경과목}'(${todaySub.보강교사 || ''})으로 변경되었습니다.`;
+        substituteDetail.innerHTML = `
+          <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+            <div class="font-bold text-amber-800 dark:text-amber-300 text-sm">⚠️ ${todaySub.교시}교시: ${todaySub.기존과목} → ${todaySub.변경과목}</div>
+            <div class="text-xs text-amber-700 dark:text-amber-400 mt-1">담당: ${todaySub.보강교사 || '자습'} | 장소: ${todaySub.수업장소 || '본교실'}</div>
+            <div class="text-xs text-slate-600 dark:text-slate-300 mt-1 font-medium">📌 안내: ${todaySub.학생안내사항 || '자습 준비할 것'}</div>
+          </div>
+        `;
+      } else {
+        substituteBanner.classList.add('hidden');
+        substituteDetail.innerHTML = `<div class="py-3 text-center text-xs text-slate-400">오늘 시간표 변동 사항이 없습니다 (정상 수업).</div>`;
+      }
+
+      // 수행평가
+      const homeworkList = document.getElementById('homeworkList');
+      homeworkList.innerHTML = '';
+      (data.homework || []).forEach(item => {
+        const dday = calculateDDay(item.마감일);
+        const div = document.createElement('div');
+        div.className = "p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800";
+        div.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded-md ${item.구분 === '수행평가' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300'}">${item.과목명}</span>
+                <span class="text-xs text-slate-400 font-medium">마감: ${item.마감일}</span>
+              </div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 mt-1">${item.제목}</h3>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-full ${dday.badgeClass} flex-shrink-0">${dday.text}</span>
+          </div>
+        `;
+        homeworkList.appendChild(div);
+      });
+
+      // 급식 (나이스 NEIS API에서 오늘 날짜로 조회)
+      const todayLunch = (data.lunch || []).find(r => r.날짜 === getTodayYMD()) || null;
+      if (todayLunch) {
+        document.getElementById('lunchMenu').innerText = todayLunch.식단메뉴 || '급식 정보 없음';
+        document.getElementById('lunchCalorie').innerText = todayLunch.칼로리 || '';
+        document.getElementById('lunchAllergy').innerText = `알레르기 정보: ${todayLunch.알레르기정보 || '해당 없음'}`;
+      } else {
+        document.getElementById('lunchMenu').innerText = '오늘 급식 정보가 나이스에 아직 등록되지 않았거나 휴일입니다 🍱';
+        document.getElementById('lunchCalorie').innerText = '';
+        document.getElementById('lunchAllergy').innerHTML = `학교 홈페이지에서 확인: <a href="https://cheongwon.sen.ms.kr/76461/subMenu.do" target="_blank" class="text-orange-600 dark:text-orange-400 font-semibold underline hover:opacity-80">청원중 식단표 보기 &gt;</a>`;
+      }
+
+      // 생일
+      const birthdayList = document.getElementById('birthdayList');
+      birthdayList.innerHTML = '';
+      const now = new Date();
+      const currentMonth = (now.getMonth() + 1).toString();
+      const currentDay = now.getDate().toString();
+
+      (data.birthday || []).forEach(b => {
+        const isToday = (b.월 === currentMonth && b.일 === currentDay);
+        const row = document.createElement('div');
+        row.className = `p-2.5 rounded-xl flex items-center justify-between text-xs ${isToday ? 'bg-pink-100 text-pink-900 dark:bg-pink-950/60 dark:text-pink-200 font-bold border border-pink-300' : 'bg-slate-50 dark:bg-slate-900/60'}`;
+        row.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span>${isToday ? '👑' : '🎉'}</span>
+            <span><strong>${b.이름}</strong> (${b.월}월 ${b.일}일)</span>
+          </div>
+          <span class="text-[11px] text-slate-400 truncate max-w-[120px]">${b.축하메시지 || ''}</span>
+        `;
+        birthdayList.appendChild(row);
+      });
+
+      // 오늘이 생일인 친구가 있으면 상단 축하 배너 표시
+      const todayBirthdays = (data.birthday || []).filter(b => b.월 === currentMonth && b.일 === currentDay);
+      const birthdayBanner = document.getElementById('birthdayBanner');
+      if (todayBirthdays.length > 0) {
+        birthdayBanner.classList.remove('hidden');
+        const bNames = todayBirthdays.map(b => b.이름).join(', ');
+        document.getElementById('birthdayMessage').innerText = `오늘은 ${bNames}의 생일입니다! 🎂 (클릭 시 폭죽 발사 🎉)`;
+      } else {
+        birthdayBanner.classList.add('hidden');
+      }
+
+      // 2학년 1반 시간표 렌더링
+      renderTimetable(data.substitute);
+
+      // 구글 스프레드시트 학사일정 렌더링
+      renderScheduleList(data.schedule || mockData.schedule);
+
+      lucide.createIcons();
+    }
+
+    function renderTimetable(substituteData) {
+      const now = new Date();
+      const days = ['일', '월', '화', '수', '목', '금', '토'];
+      const todayDay = days[now.getDay()];
+      const todaySub = (substituteData || []).find(r => r.날짜 === getTodayYMD());
+
+      const todayView = document.getElementById('todayTimetableView');
+      const todayLabel = document.getElementById('timetableTodayLabel');
+      if (!todayView) return;
+
+      const daySubjects = TIMETABLE_2_1[todayDay] || TIMETABLE_2_1['월'];
+      const displayDay = TIMETABLE_2_1[todayDay] ? `${todayDay}요일` : `월요일 (주말/휴일 미리보기)`;
+      todayLabel.innerText = `${displayDay} (${daySubjects.length}교시 수업)`;
+
+      let todayHtml = '';
+      daySubjects.forEach((sub, idx) => {
+        const period = idx + 1;
+        const isChanged = (todaySub && String(todaySub.교시) === String(period));
+        const finalSub = isChanged ? todaySub.변경과목 : sub;
+        
+        todayHtml += `
+          <div class="flex items-center justify-between p-2.5 rounded-xl ${isChanged ? 'bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700' : 'bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800'} transition hover:border-blue-200">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-black flex items-center justify-center">${period}</span>
+              <div>
+                <span class="text-sm font-bold text-slate-800 dark:text-slate-100">${finalSub}</span>
+                ${isChanged ? `<span class="text-[10px] text-amber-700 dark:text-amber-400 font-bold ml-1.5 line-through opacity-70">${sub}</span>` : ''}
+              </div>
+            </div>
+            ${isChanged ? '<span class="text-[10px] bg-amber-500 text-white font-bold px-2 py-0.5 rounded-full">자습 변동</span>' : `<span class="text-xs text-slate-400 font-medium">${period}교시</span>`}
+          </div>
+        `;
+      });
+      todayView.innerHTML = todayHtml;
+
+      // 주간 테이블 렌더링
+      const weeklyTbody = document.getElementById('weeklyTableBody');
+      if (!weeklyTbody) return;
+      let weeklyHtml = '';
+      for (let p = 1; p <= 7; p++) {
+        weeklyHtml += `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">
+          <td class="py-2 font-bold text-slate-400 border-r border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">${p}</td>`;
+        ['월', '화', '수', '목', '금'].forEach(d => {
+          const s = TIMETABLE_2_1[d][p - 1] || '-';
+          const isTodayCol = (d === todayDay);
+          const cellBg = isTodayCol ? 'bg-blue-50/70 dark:bg-blue-950/40 font-bold text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300';
+          weeklyHtml += `<td class="py-2 border-r last:border-r-0 border-slate-200 dark:border-slate-700 ${cellBg}">${s}</td>`;
+        });
+        weeklyHtml += `</tr>`;
+      }
+      weeklyTbody.innerHTML = weeklyHtml;
+
+      // 요일 헤더 하이라이트
+      ['mon', 'tue', 'wed', 'thu', 'fri'].forEach((id, i) => {
+        const d = ['월', '화', '수', '목', '금'][i];
+        const th = document.getElementById(`th-${id}`);
+        if (th && d === todayDay) {
+          th.classList.add('bg-blue-100', 'dark:bg-blue-900', 'text-blue-700', 'dark:text-blue-300');
+        }
+      });
+    }
+
+    function renderScheduleList(scheduleList) {
+      const container = document.getElementById('scheduleList');
+      const countEl = document.getElementById('scheduleCount');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      countEl.innerText = scheduleList.length;
+
+      scheduleList.forEach(item => {
+        const dday = calculateDDay(item.시작일);
+        const isSameDay = (item.시작일 === item.종료일 || !item.종료일);
+        const dateRangeStr = isSameDay ? item.시작일 : `${item.시작일} ~ ${item.종료일}`;
+        
+        const card = document.createElement('div');
+        card.className = "p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 transition hover:border-teal-300";
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300">${item.대상 || '전교생'}</span>
+                <span class="text-xs text-slate-400 font-medium">📅 ${dateRangeStr}</span>
+              </div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 mt-1">${item.행사명}</h3>
+              ${item.상세내용 ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${item.상세내용}</p>` : ''}
+              ${item.준비물 ? `<div class="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-lg border border-amber-200/60 dark:border-amber-900/60 inline-flex items-center gap-1">🎒 ${item.준비물}</div>` : ''}
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-full ${dday.badgeClass} flex-shrink-0">${dday.text}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    // ========================================================
+    // 실시간 데이터 연동: 구글 시트 CSV + 나이스(NEIS) 급식 API
+    // ========================================================
+    // CSV 파서 (따옴표로 감싼 필드 처리)
+    function parseCSV(text) {
+      const rows = [];
+      let row = [], field = '', inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQuotes) {
+          if (c === '"') {
+            if (text[i + 1] === '"') { field += '"'; i++; }
+            else { inQuotes = false; }
+          } else { field += c; }
+        } else {
+          if (c === '"') { inQuotes = true; }
+          else if (c === ',') { row.push(field); field = ''; }
+          else if (c === '\n' || c === '\r') {
+            if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+            row = []; field = '';
+            if (c === '\r' && text[i + 1] === '\n') i++;
+          } else { field += c; }
+        }
+      }
+      if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+      return rows;
+    }
+
+    // 구글 시트 공개 CSV 읽기 (첫 행=헤더, 객체 배열로 변환)
+    async function fetchSheetCSV(url) {
+      if (!url) return null;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const rows = parseCSV(await res.text());
+        if (rows.length < 2) return [];
+        const header = rows[0].map(h => h.trim());
+        return rows.slice(1)
+          .filter(r => r.some(cell => (cell || '').trim() !== ''))
+          .map(r => {
+            const obj = {};
+            header.forEach((h, i) => { obj[h] = (r[i] || '').trim(); });
+            return obj;
+          });
+      } catch (e) {
+        console.warn('구글 시트 불러오기 실패:', e);
+        return null;
+      }
+    }
+
+    // 나이스 알레르기 유발식품 코드표 (1~19)
+    const ALLERGY_MAP = {
+      '1': '난류', '2': '우유', '3': '메밀', '4': '땅콩', '5': '대두',
+      '6': '밀', '7': '고등어', '8': '게', '9': '새우', '10': '돼지고기',
+      '11': '복숭아', '12': '토마토', '13': '아황산염', '14': '호두',
+      '15': '닭고기', '16': '쇠고기', '17': '오징어', '18': '조개류', '19': '잣'
+    };
+
+    // 나이스(NEIS) 교육정보개방포털에서 오늘 급식 조회
+    async function fetchNeisLunch() {
+      try {
+        const ymd = getTodayYMD().replace(/-/g, '');
+        const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&pIndex=1&pSize=10`
+          + `&ATPT_OFCDC_SC_CODE=${CONFIG.neis.atptCode}&SD_SCHUL_CODE=${CONFIG.neis.schoolCode}&MLSV_YMD=${ymd}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const info = json.mealServiceDietInfo;
+        if (!info || !info[1] || !info[1].row || info[1].row.length === 0) return null;
+        // 중식 우선, 없으면 첫 번째 식사
+        const row = info[1].row.find(r => (r.MMEAL_SC_NM || '').includes('중식')) || info[1].row[0];
+        const dishes = String(row.DDISH_NM || '').split('<br/>').map(s => s.trim()).filter(Boolean);
+        const menuNames = dishes.map(d => d.replace(/\s*\([\d.]+\)\s*/g, '').trim()).filter(Boolean);
+        // 메뉴에 표시된 알레르기 코드를 한글명으로 변환
+        const codes = new Set();
+        dishes.forEach(d => {
+          const m = d.match(/\(([\d.]+)\)/);
+          if (m) m[1].split('.').forEach(c => { if (c) codes.add(c); });
+        });
+        const allergyText = [...codes]
+          .sort((a, b) => Number(a) - Number(b))
+          .map(c => `${ALLERGY_MAP[c] || '기타'}(${c})`)
+          .join(', ');
+        return {
+          날짜: getTodayYMD(),
+          식단메뉴: menuNames.join(', '),
+          칼로리: row.CAL_INFO || '',
+          알레르기정보: allergyText || '해당 없음'
+        };
+      } catch (e) {
+        console.warn('나이스 급식 조회 실패:', e);
+        return null;
+      }
+    }
+
+    async function refreshData() {
+      // 구글 시트 4종 병렬 조회 (결보강, 수행평가, 생일, 학사일정)
+      const [substitute, homework, birthday, schedule] = await Promise.all([
+        fetchSheetCSV(CONFIG.sheets.substitute),
+        fetchSheetCSV(CONFIG.sheets.homework),
+        fetchSheetCSV(CONFIG.sheets.birthday),
+        fetchSheetCSV(CONFIG.sheets.schedule)
+      ]);
+      const data = {
+        substitute: substitute || mockData.substitute,
+        homework: homework || mockData.homework,
+        birthday: birthday || mockData.birthday,
+        schedule: schedule || mockData.schedule,
+        lunch: [
+        {
+          날짜: getTodayYMD(),
+          식단메뉴: "계란볶음밥, 해물쟁반짜장, 유린기, 물만두찜, 두부겨자냉채, 자율_콩나물국, 배추김치, 복숭아음료",
+          칼로리: "820 kcal",
+          알레르기정보: "난류(1), 우유(2), 대두(5), 밀(6), 갑각류(8,9), 돼지고기(10), 복숭아(11), 닭고기(15), 쇠고기(16), 오징어(17)"
+        }
+      ],
+      birthday: [
+        { 월: (new Date().getMonth() + 1).toString(), 일: new Date().getDate().toString(), 이름: "이준호", 축하메시지: "준호야 생일 진심으로 축하해! 오늘 하루 가장 멋진 주인공이 되렴!" }
+      ],
+      // 구글 스프레드시트 학사일정 기본 데이터 (gid=989619611)
+      schedule: [
+        { 시작일: "2026-10-22", 종료일: "2026-10-24", 행사명: "2학기 1차 지필평가 (중간고사)", 대상: "전교생", 상세내용: "국영수사과 전과목", 준비물: "컴싸 및 수정테이프" },
+        { 시작일: "2026-11-05", 종료일: "2026-11-05", 행사명: "가을 현장체험학습", 대상: "3학년", 상세내용: "국립중앙박물관 견학", 준비물: "도시락 및 편한 복장" },
+        { 시작일: "2026-11-18", 종료일: "2026-11-18", 행사명: "교내 스포츠클럽 축구 결승전", 대상: "학급대표", 상세내용: "점심시간 운동장", 준비물: "응원도구" },
+        { 시작일: "2026-12-24", 종료일: "2026-12-24", 행사명: "겨울방학식 및 학급 축제", 대상: "전교생", 상세내용: "방학 생활안내 배포", 준비물: "대청소 도구" }
+      ]
+    };
+
+    function getTodayYMD() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function getDateOffset(days) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function openImageModal(imgSrc, title) {
+      document.getElementById('modalImg').src = imgSrc;
+      document.getElementById('modalTitle').innerText = title;
+      document.getElementById('imageModal').classList.remove('hidden');
+    }
+    function closeImageModal() { document.getElementById('imageModal').classList.add('hidden'); }
+
+    function updateClock() {
+      const now = new Date();
+      const days = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+      document.getElementById('clockDate').innerText = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()} (${days[now.getDay()]})`;
+      document.getElementById('clockTime').innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function toggleDarkMode() { document.documentElement.classList.toggle('dark'); }
+    function fireConfetti() { if (typeof confetti === 'function') confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } }); }
+
+    function calculateDDay(targetDateStr) {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const target = new Date(targetDateStr); target.setHours(0,0,0,0);
+      const diffDays = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return { text: "D-Day", badgeClass: "bg-red-500 text-white font-black animate-pulse" };
+      if (diffDays === 1) return { text: "D-1", badgeClass: "bg-orange-500 text-white font-bold" };
+      if (diffDays > 1 && diffDays <= 3) return { text: `D-${diffDays}`, badgeClass: "bg-amber-500 text-white font-bold" };
+      if (diffDays > 3) return { text: `D-${diffDays}`, badgeClass: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-semibold" };
+      return { text: "마감", badgeClass: "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400" };
+    }
+
+    function renderDashboard(data) {
+      // 결보강
+      const substituteBanner = document.getElementById('substituteBanner');
+      const substituteDetail = document.getElementById('substituteDetail');
+      const todaySub = (data.substitute || []).find(r => r.날짜 === getTodayYMD());
+
+      if (todaySub) {
+        substituteBanner.classList.remove('hidden');
+        document.getElementById('substituteText').innerText = `[오늘 시간표 변동 알림] ${todaySub.교시}교시 ${todaySub.기존과목} 수업이 '${todaySub.변경과목}'(${todaySub.보강교사 || ''})으로 변경되었습니다.`;
+        substituteDetail.innerHTML = `
+          <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+            <div class="font-bold text-amber-800 dark:text-amber-300 text-sm">⚠️ ${todaySub.교시}교시: ${todaySub.기존과목} → ${todaySub.변경과목}</div>
+            <div class="text-xs text-amber-700 dark:text-amber-400 mt-1">담당: ${todaySub.보강교사 || '자습'} | 장소: ${todaySub.수업장소 || '본교실'}</div>
+            <div class="text-xs text-slate-600 dark:text-slate-300 mt-1 font-medium">📌 안내: ${todaySub.학생안내사항 || '자습 준비할 것'}</div>
+          </div>
+        `;
+      } else {
+        substituteBanner.classList.add('hidden');
+        substituteDetail.innerHTML = `<div class="py-3 text-center text-xs text-slate-400">오늘 시간표 변동 사항이 없습니다 (정상 수업).</div>`;
+      }
+
+      // 수행평가
+      const homeworkList = document.getElementById('homeworkList');
+      homeworkList.innerHTML = '';
+      (data.homework || []).forEach(item => {
+        const dday = calculateDDay(item.마감일);
+        const div = document.createElement('div');
+        div.className = "p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800";
+        div.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded-md ${item.구분 === '수행평가' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300'}">${item.과목명}</span>
+                <span class="text-xs text-slate-400 font-medium">마감: ${item.마감일}</span>
+              </div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 mt-1">${item.제목}</h3>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-full ${dday.badgeClass} flex-shrink-0">${dday.text}</span>
+          </div>
+        `;
+        homeworkList.appendChild(div);
+      });
+
+      // 급식 (나이스 NEIS API에서 오늘 날짜로 조회)
+      const todayLunch = (data.lunch || []).find(r => r.날짜 === getTodayYMD()) || null;
+      if (todayLunch) {
+        document.getElementById('lunchMenu').innerText = todayLunch.식단메뉴 || '급식 정보 없음';
+        document.getElementById('lunchCalorie').innerText = todayLunch.칼로리 || '';
+        document.getElementById('lunchAllergy').innerText = `알레르기 정보: ${todayLunch.알레르기정보 || '해당 없음'}`;
+      } else {
+        document.getElementById('lunchMenu').innerText = '오늘 급식 정보가 나이스에 아직 등록되지 않았거나 휴일입니다 🍱';
+        document.getElementById('lunchCalorie').innerText = '';
+        document.getElementById('lunchAllergy').innerHTML = `학교 홈페이지에서 확인: <a href="https://cheongwon.sen.ms.kr/76461/subMenu.do" target="_blank" class="text-orange-600 dark:text-orange-400 font-semibold underline hover:opacity-80">청원중 식단표 보기 &gt;</a>`;
+      }
+
+      // 생일
+      const birthdayList = document.getElementById('birthdayList');
+      birthdayList.innerHTML = '';
+      const now = new Date();
+      const currentMonth = (now.getMonth() + 1).toString();
+      const currentDay = now.getDate().toString();
+
+      (data.birthday || []).forEach(b => {
+        const isToday = (b.월 === currentMonth && b.일 === currentDay);
+        const row = document.createElement('div');
+        row.className = `p-2.5 rounded-xl flex items-center justify-between text-xs ${isToday ? 'bg-pink-100 text-pink-900 dark:bg-pink-950/60 dark:text-pink-200 font-bold border border-pink-300' : 'bg-slate-50 dark:bg-slate-900/60'}`;
+        row.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span>${isToday ? '👑' : '🎉'}</span>
+            <span><strong>${b.이름}</strong> (${b.월}월 ${b.일}일)</span>
+          </div>
+          <span class="text-[11px] text-slate-400 truncate max-w-[120px]">${b.축하메시지 || ''}</span>
+        `;
+        birthdayList.appendChild(row);
+      });
+
+      // 오늘이 생일인 친구가 있으면 상단 축하 배너 표시
+      const todayBirthdays = (data.birthday || []).filter(b => b.월 === currentMonth && b.일 === currentDay);
+      const birthdayBanner = document.getElementById('birthdayBanner');
+      if (todayBirthdays.length > 0) {
+        birthdayBanner.classList.remove('hidden');
+        const bNames = todayBirthdays.map(b => b.이름).join(', ');
+        document.getElementById('birthdayMessage').innerText = `오늘은 ${bNames}의 생일입니다! 🎂 (클릭 시 폭죽 발사 🎉)`;
+      } else {
+        birthdayBanner.classList.add('hidden');
+      }
+
+      // 2학년 1반 시간표 렌더링
+      renderTimetable(data.substitute);
+
+      // 구글 스프레드시트 학사일정 렌더링
+      renderScheduleList(data.schedule || mockData.schedule);
+
+      lucide.createIcons();
+    }
+
+    function renderTimetable(substituteData) {
+      const now = new Date();
+      const days = ['일', '월', '화', '수', '목', '금', '토'];
+      const todayDay = days[now.getDay()];
+      const todaySub = (substituteData || []).find(r => r.날짜 === getTodayYMD());
+
+      const todayView = document.getElementById('todayTimetableView');
+      const todayLabel = document.getElementById('timetableTodayLabel');
+      if (!todayView) return;
+
+      const daySubjects = TIMETABLE_2_1[todayDay] || TIMETABLE_2_1['월'];
+      const displayDay = TIMETABLE_2_1[todayDay] ? `${todayDay}요일` : `월요일 (주말/휴일 미리보기)`;
+      todayLabel.innerText = `${displayDay} (${daySubjects.length}교시 수업)`;
+
+      let todayHtml = '';
+      daySubjects.forEach((sub, idx) => {
+        const period = idx + 1;
+        const isChanged = (todaySub && String(todaySub.교시) === String(period));
+        const finalSub = isChanged ? todaySub.변경과목 : sub;
+        
+        todayHtml += `
+          <div class="flex items-center justify-between p-2.5 rounded-xl ${isChanged ? 'bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700' : 'bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800'} transition hover:border-blue-200">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-black flex items-center justify-center">${period}</span>
+              <div>
+                <span class="text-sm font-bold text-slate-800 dark:text-slate-100">${finalSub}</span>
+                ${isChanged ? `<span class="text-[10px] text-amber-700 dark:text-amber-400 font-bold ml-1.5 line-through opacity-70">${sub}</span>` : ''}
+              </div>
+            </div>
+            ${isChanged ? '<span class="text-[10px] bg-amber-500 text-white font-bold px-2 py-0.5 rounded-full">자습 변동</span>' : `<span class="text-xs text-slate-400 font-medium">${period}교시</span>`}
+          </div>
+        `;
+      });
+      todayView.innerHTML = todayHtml;
+
+      // 주간 테이블 렌더링
+      const weeklyTbody = document.getElementById('weeklyTableBody');
+      if (!weeklyTbody) return;
+      let weeklyHtml = '';
+      for (let p = 1; p <= 7; p++) {
+        weeklyHtml += `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">
+          <td class="py-2 font-bold text-slate-400 border-r border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">${p}</td>`;
+        ['월', '화', '수', '목', '금'].forEach(d => {
+          const s = TIMETABLE_2_1[d][p - 1] || '-';
+          const isTodayCol = (d === todayDay);
+          const cellBg = isTodayCol ? 'bg-blue-50/70 dark:bg-blue-950/40 font-bold text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300';
+          weeklyHtml += `<td class="py-2 border-r last:border-r-0 border-slate-200 dark:border-slate-700 ${cellBg}">${s}</td>`;
+        });
+        weeklyHtml += `</tr>`;
+      }
+      weeklyTbody.innerHTML = weeklyHtml;
+
+      // 요일 헤더 하이라이트
+      ['mon', 'tue', 'wed', 'thu', 'fri'].forEach((id, i) => {
+        const d = ['월', '화', '수', '목', '금'][i];
+        const th = document.getElementById(`th-${id}`);
+        if (th && d === todayDay) {
+          th.classList.add('bg-blue-100', 'dark:bg-blue-900', 'text-blue-700', 'dark:text-blue-300');
+        }
+      });
+    }
+
+    function renderScheduleList(scheduleList) {
+      const container = document.getElementById('scheduleList');
+      const countEl = document.getElementById('scheduleCount');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      countEl.innerText = scheduleList.length;
+
+      scheduleList.forEach(item => {
+        const dday = calculateDDay(item.시작일);
+        const isSameDay = (item.시작일 === item.종료일 || !item.종료일);
+        const dateRangeStr = isSameDay ? item.시작일 : `${item.시작일} ~ ${item.종료일}`;
+        
+        const card = document.createElement('div');
+        card.className = "p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 transition hover:border-teal-300";
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300">${item.대상 || '전교생'}</span>
+                <span class="text-xs text-slate-400 font-medium">📅 ${dateRangeStr}</span>
+              </div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 mt-1">${item.행사명}</h3>
+              ${item.상세내용 ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${item.상세내용}</p>` : ''}
+              ${item.준비물 ? `<div class="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-lg border border-amber-200/60 dark:border-amber-900/60 inline-flex items-center gap-1">🎒 ${item.준비물}</div>` : ''}
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-full ${dday.badgeClass} flex-shrink-0">${dday.text}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    // ========================================================
+    // 실시간 데이터 연동: 구글 시트 CSV + 나이스(NEIS) 급식 API
+    // ========================================================
+    // CSV 파서 (따옴표로 감싼 필드 처리)
+    function parseCSV(text) {
+      const rows = [];
+      let row = [], field = '', inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQuotes) {
+          if (c === '"') {
+            if (text[i + 1] === '"') { field += '"'; i++; }
+            else { inQuotes = false; }
+          } else { field += c; }
+        } else {
+          if (c === '"') { inQuotes = true; }
+          else if (c === ',') { row.push(field); field = ''; }
+          else if (c === '\n' || c === '\r') {
+            if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+            row = []; field = '';
+            if (c === '\r' && text[i + 1] === '\n') i++;
+          } else { field += c; }
+        }
+      }
+      if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+      return rows;
+    }
+
+    // 구글 시트 공개 CSV 읽기 (첫 행=헤더, 객체 배열로 변환)
+    async function fetchSheetCSV(url) {
+      if (!url) return null;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const rows = parseCSV(await res.text());
+        if (rows.length < 2) return [];
+        const header = rows[0].map(h => h.trim());
+        return rows.slice(1)
+          .filter(r => r.some(cell => (cell || '').trim() !== ''))
+          .map(r => {
+            const obj = {};
+            header.forEach((h, i) => { obj[h] = (r[i] || '').trim(); });
+            return obj;
+          });
+      } catch (e) {
+        console.warn('구글 시트 불러오기 실패:', e);
+        return null;
+      }
+    }
+
+    // 나이스 알레르기 유발식품 코드표 (1~19)
+    const ALLERGY_MAP = {
+      '1': '난류', '2': '우유', '3': '메밀', '4': '땅콩', '5': '대두',
+      '6': '밀', '7': '고등어', '8': '게', '9': '새우', '10': '돼지고기',
+      '11': '복숭아', '12': '토마토', '13': '아황산염', '14': '호두',
+      '15': '닭고기', '16': '쇠고기', '17': '오징어', '18': '조개류', '19': '잣'
+    };
+
+    // 나이스(NEIS) 교육정보개방포털에서 오늘 급식 조회
+    async function fetchNeisLunch() {
+      try {
+        const ymd = getTodayYMD().replace(/-/g, '');
+        const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&pIndex=1&pSize=10`
+          + `&ATPT_OFCDC_SC_CODE=${CONFIG.neis.atptCode}&SD_SCHUL_CODE=${CONFIG.neis.schoolCode}&MLSV_YMD=${ymd}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const info = json.mealServiceDietInfo;
+        if (!info || !info[1] || !info[1].row || info[1].row.length === 0) return null;
+        // 중식 우선, 없으면 첫 번째 식사
+        const row = info[1].row.find(r => (r.MMEAL_SC_NM || '').includes('중식')) || info[1].row[0];
+        const dishes = String(row.DDISH_NM || '').split('<br/>').map(s => s.trim()).filter(Boolean);
+        const menuNames = dishes.map(d => d.replace(/\s*\([\d.]+\)\s*/g, '').trim()).filter(Boolean);
+        // 메뉴에 표시된 알레르기 코드를 한글명으로 변환
+        const codes = new Set();
+        dishes.forEach(d => {
+          const m = d.match(/\(([\d.]+)\)/);
+          if (m) m[1].split('.').forEach(c => { if (c) codes.add(c); });
+        });
+        const allergyText = [...codes]
+          .sort((a, b) => Number(a) - Number(b))
+          .map(c => `${ALLERGY_MAP[c] || '기타'}(${c})`)
+          .join(', ');
+        return {
+          날짜: getTodayYMD(),
+          식단메뉴: menuNames.join(', '),
+          칼로리: row.CAL_INFO || '',
+          알레르기정보: allergyText || '해당 없음'
+        };
+      } catch (e) {
+        console.warn('나이스 급식 조회 실패:', e);
+        return null;
+      }
+    }
+
+    async function refreshData() {
+      // 구글 시트 4종 병렬 조회 (결보강, 수행평가, 생일, 학사일정)
+      const [substitute, homework, birthday, schedule] = await Promise.all([
+        fetchSheetCSV(CONFIG.sheets.substitute),
+        fetchSheetCSV(CONFIG.sheets.homework),
+        fetchSheetCSV(CONFIG.sheets.birthday),
+        fetchSheetCSV(CONFIG.sheets.schedule)
+      ]);
+      const data = {
+        substitute: substitute || mockData.substitute,
+        homework: homework || mockData.homework,
+        birthday: birthday || mockData.birthday,
+        schedule: schedule || mockData.schedule,
+        lunch: []
+      };
+      // 급식은 나이스에서 오늘 날짜로 조회 (나이스 미등록 시 청원중 홈페이지 실제 식단 기본값 사용)
+      const neisLunch = await fetchNeisLunch();
+      if (neisLunch) {
+        data.lunch = [neisLunch];
+        data.lunchSource = "나이스 실시간";
+      } else {
+        data.lunch = mockData.lunch;
+        data.lunchSource = "청원중 홈페이지 식단";
+      }
+      renderDashboard(data);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('headerSchool').innerText = CONFIG.schoolName;
+      document.getElementById('headerClass').innerText = CONFIG.className;
+      document.getElementById('headerMotto').innerHTML = `<i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i> ${CONFIG.motto}`;
+      refreshData();
+    });
+  </script>
+</body>
+</html>
