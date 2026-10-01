@@ -1,16 +1,17 @@
 // ============================================================
 // 우리 반 출결 기록 DB — 구글 Apps Script (어렵지 않아요!)
 // ------------------------------------------------------------
-// 이 코드는 '구글 시트'를 작은 데이터베이스처럼 쓰게 해주는
-// 통역사예요. 앱에서 "출결 저장해줘"라고 하면 시트에 적어주고,
+// 이 코드는 '출결기록' 스프레드시트를 작은 데이터베이스처럼 쓰게
+// 해주는 통역사예요. 앱에서 "출결 저장해줘"라고 하면 시트에 적어주고,
 // "오늘 출결 보여줘"라고 하면 시트에서 읽어다 줍니다.
-// 코딩을 몰라도 돼요. 아래 3곳만 확인하세요!
-//   ① SHEET_NAME: 시트 탭 이름 (꼭 '출결기록'으로 만들어주세요)
+// ★ 이 코드는 '출결기록' 전용 스프레드시트에 묶어서 쓰세요!
+//   (학생명단 파일이 아닙니다. 파일 2개를 따로 만드세요.)
+// 코딩을 몰라도 돼요. 아래 2곳만 확인하세요!
+//   ① SHEET_NAME: 첫 시트 이름 (꼭 '출결기록'으로 해주세요)
 //   ② 열 순서: 기록시간 | 날짜 | 번호 | 이름 | 상태 | 입력방법 | 비고
-//   ③ 이 파일은 건드릴 게 없어요. 그대로 복붙하면 됩니다!
 // ============================================================
 
-// 출결을 기록할 시트 탭 이름 (시트에 똑같은 이름으로 탭을 만들어주세요!)
+// 출결기록 전용 스프레드시트의 첫 시트 이름 (똑같은 이름으로 해주세요!)
 const SHEET_NAME = '출결기록';
 
 /**
@@ -21,7 +22,7 @@ const SHEET_NAME = '출결기록';
 function doGet(e) {
   const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
   if (!sh) {
-    return jsonOut({ ok: false, msg: '출결기록 탭이 없어요. 시트에 탭을 먼저 만들어주세요!' });
+    return jsonOut({ ok: false, msg: '출결기록 시트를 찾지 못했어요. 첫 시트 이름이 출결기록인지 확인해주세요!' });
   }
   const rows = sh.getDataRange().getValues();
   const wantDate = (e.parameter.date || '').trim();  // 원하는 날짜 (없으면 전체)
@@ -50,7 +51,7 @@ function doGet(e) {
 function doPost(e) {
   const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
   if (!sh) {
-    return jsonOut({ ok: false, msg: '출결기록 탭이 없어요. 시트에 탭을 먼저 만들어주세요!' });
+    return jsonOut({ ok: false, msg: '출결기록 시트를 찾지 못했어요. 첫 시트 이름이 출결기록인지 확인해주세요!' });
   }
   const d = JSON.parse(e.postData.contents);  // 앱이 보낸 데이터 꺼내기
   sh.appendRow([
